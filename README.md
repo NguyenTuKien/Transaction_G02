@@ -336,4 +336,10 @@ Read(x) được phiên dịch thành đọc trên 1 phiên bản cụ thể xv 
 Wi(x) được chấp nhận nếu bộ xử lý chưa xử lý bất kì thao tác Rj(xv) nào thỏa mãn ts(Tj) > ts(Ti) và ts(xv) <= ts(Ti). Nếu có, Wi(x) bị từ chối và giao tác Ti bị hủy.
 
 ---
-## 7. 
+## 7. Optimistic Concurrency Control
+So sánh:
+| Bi quan (Pessimistic) | Lạc quan (Optimistic) |
+| --- | --- |
+| Giả định xung đột sẽ xảy ra | Giả định xung đột sẽ không xảy ra |
+| Validate &rarr; Read &rarr; Compute &rarr; Write | Read &rarr; Compute &rarr; Validate &rarr; Write |
+
