@@ -336,4 +336,54 @@ Read(x) được phiên dịch thành đọc trên 1 phiên bản cụ thể xv 
 Wi(x) được chấp nhận nếu bộ xử lý chưa xử lý bất kì thao tác Rj(xv) nào thỏa mãn ts(Tj) > ts(Ti) và ts(xv) <= ts(Ti). Nếu có, Wi(x) bị từ chối và giao tác Ti bị hủy.
 
 ---
-## 7. 
+## 7. Optimistic Concurrency Control
+Optimistic Concurrency Control (OCC) là một phương pháp quản lý đồng thời mà giả định rằng các giao tác sẽ không xung đột với nhau. Thay vì sử dụng khóa để ngăn chặn xung đột, OCC cho phép các giao tác thực hiện đồng thời và kiểm tra xung đột khi chúng cố gắng commit.
+
+So sánh:
+| Bi quan (Pessimistic) | Lạc quan (Optimistic) |
+| --- | --- |
+| Giả định sẽ có xung đột | Giả định sẽ không có xung đột |
+| Validate &rarr; Read &rarr; Compute &rarr; Write | Read &rarr; Compute &rarr; Write &rarr; Validate |
+
+Mô hình thực thi:
+- Giao tác Ti được chia thành các giao tác nhỏ hơn (subtransaction) để thực hiện các thao tác trên dữ liệu tại các site j.
+- Các subtransaction chạy độc lập từng site cho đến khi kết thúc pha đọc.
+- Tất cả các subtrans được gán timestamp tại cuối pha đọc.
+- Kiểm tra hợp lệ (validation) trong pha validation. Nếu hợp lệ, giao tác được commit; nếu không, giao tác bị hủy và có thể được thực hiện lại với timestamp mới.
+
+| 4 pha | 5 pha | 3 pha | Ý nghĩa |
+| --- | --- | --- | --- |
+| Read | R (Read) | Read phase | Đọc dữ liệu từ database vào local workspace |
+| Compute | E (Execute) | | Chạy các lệnh logic tính toán |
+|  | W (Write) | | Ghi dữ liệu từ local workspace trở lại database |
+| Validate | V (Validate) | Validation phase | Kiểm tra xung đột với các giao tác khác |
+| Write | C (Commit) | Write phase | Nếu hợp lệ, ghi dữ liệu vào database và commit; nếu không, hủy giao tác |
+
+**Ba điều kiện kiểm tra hợp lệ:** Với mọi giao tác Tk mà ts(Tk) < ts(Tij):
+
+- ***Điều kiện 1: Không chồng chéo***
+    - Nếu tất cả các giao tác Tk đã hoàn thành pha TRƯỚC KHI Tij bắt đầu đọc &rarr; Validate thành công &rArr; Các transaction thực thi hoàn toàn nối tiếp.
+- ***Điều kiện 2: Chồng chéo pha đọc - ghi, không có dữ liệu chung.***
+    - Nếu Tk hoàn thành pha đọc trước khi Tij hoàn thành pha đọc, validate thành công nếu: 
+        - WS(Tk) ∩ RS(Tij) = ∅ (không có dữ liệu chung được ghi bởi Tk và đọc bởi Tij).
+    
+    &rArr; Tij không đọc dữ liệu do Tk ghi, nên không có xung đột.
+- ***Điều kiện 3: Chồng chéo pha hoàn toàn, không có dữ liệu chung.***
+    - Nếu Tk hoàn thành pha đọc trước khi Tij hoàn thành pha đọc, validation thành công nếu:
+        - WS(Tk) ∩ RS(Tij) = ∅ (không có dữ liệu chung được ghi bởi Tk và đọc bởi Tij).
+        - WS(Tk) ∩ WS(Tij) = ∅ (không có dữ liệu chung được ghi bởi cả Tk và Tij).
+    &rArr; Tij không đọc hoặc ghi dữ liệu do Tk ghi, nên không có xung đột.
+
+---
+## 8. Snapshot Isolation (SI)
+Snapshot Isolation là cơ chế trong đó mỗi giao tác 'nhìn thấy' một ảnh chụp nhất quán (consistent snapshot) của CSDL tại thời điểm nó bắt đầu, và đọc/ghi trên ảnh chụp đó.
+
+**Đặc điểm:**
+- Đọc lặp lại (Repeatable Reads): Các lần đọc trong cùng một giao tác luôn cho cùng kết quả.
+- KHÔNG HOÀN TOÀN tuần tự hóa (Not Fully Serializable): Có thể xảy ra hiện tượng "write skew" khi hai giao tác cùng đọc một dữ liệu và sau đó ghi vào các dữ liệu khác dựa trên giá trị đã đọc, dẫn đến kết quả không nhất quán.
+- Thao tác chỉ đọc không cần đồng bộ hóa nặng nề.
+
+**Cơ chế SI tập trung (4 bước):**
+- Bước 1: Ti bắt đầu, lấy begin timestamp tsb(Ti).
+- Bước 2: Ti sẵn sàng commit, lấy commit timestamp tsc(Tj) lớn hơn mọi tsb hoặc tsc đã tồn tại.
+- Bước 3: Ti commit NẾU không có Tj nào khác sao cho tsc(Tj) 
