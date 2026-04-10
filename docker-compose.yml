@@ -1,0 +1,18 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sql_node_1 # SỬA TÊN NÀY THEO TỪNG MÁY (vd: sql_node_1 -> 6)
+    hostname: sql_node_1       # SỬA TÊN NÀY THEO TỪNG MÁY (Bắt buộc cho MSDTC)
+    network_mode: "host"       # Bắt buộc để các máy nhìn thấy nhau qua WiFi
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd" # Nên dùng chung 1 pass cho dễ quản lý
+      MSSQL_TCP_PORT: "1433"     # Các máy độc lập nên cứ dùng port chuẩn 1433
+      MSSQL_RPC_PORT: "135"      # Port bắt tay Transaction
+      MSSQL_DTC_TCP_PORT: "51000" # Port truyền dữ liệu Transaction
+    volumes:
+      - sql_data:/var/opt/mssql
+
+volumes:
+  sql_data:
